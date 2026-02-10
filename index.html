@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="template.v2.js"></script>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://d3js.org/d3-collection.v1.min.js"></script>
+        <script src="cross_fade.js"></script>
+        <link rel="stylesheet" href="style.css">
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+            onload="renderMathInElement(document.body);"></script>
+    </head>
+    <body>
+        <div class="header-container">
+            <div class="header-content">
+              <h1 class="paper-title">
+                <span class="paper-title-main">ExplicitShortCut:</span>
+                <span class="paper-title-sub">On the Design of One-step Diffusion via<br>Shortcutting Flow Paths</span>
+              </h1>
+              <div class="button-container">
+                <a href="https://openreview.net/pdf?id=k6q8rRYVQR" class="button" target="_blank" rel="noopener noreferrer">Paper</a>
+                <a href="https://github.com/EDAPINENUT/ExplicitShortCut/" class="button" target="_blank" rel="noopener noreferrer">Code</a>
+              </div>
+            </div>
+            <div class="header-image">
+                <img src="images/teaser.png" alt="Main Introduction Image" class="teaser-image">
+            </div>
+        </div>
+    <d-article>
+        <div class="byline">
+            <div class="byline-container">
+                <div class="byline-column">
+                    <h3>Authors</h3>
+                    <p>Haitao Lin<sup>1</sup>, Peiyan Hu<sup>1,2</sup>, Minsi Ren<sup>1</sup></p>
+                    <p>Zhifeng Gao<sup>3</sup>, Zhi-Ming Ma<sup>2</sup></p>
+                    <p>Guolin Ke<sup>3</sup>, Tailin Wu<sup>1</sup>, Stan Z. Li<sup>1</sup></p>
+                </div>
+                <div class="byline-column">
+                    <h3>Affiliations</h3>
+                    <p><sup>1</sup> Westlake University</p>
+                    <p><sup>2</sup> Chinese Academy of Sciences</p>
+                    <p><sup>3</sup> DP Technology</p>
+                </div>
+                <div class="byline-column">
+                    <h3>Date</h3>
+                    <p>2025.9</p>
+                </div>
+            </div>
+        </div>
+        <d-contents>
+            <nav>
+                <h4>Contents</h4>
+                <div><a href="#abstract">Abstract</a></div>
+                <div><a href="#unification">Unifying Designing Choices</a></div>
+                <div><a href="#elucidating">Elucidating Designing Space</a></div>
+                <div><a href="#improvements">Improvements to Training</a></div>
+                <div><a href="#experiments">Experiments</a></div>
+            </nav>
+        </d-contents>
+
+        <d-figure>
+            <figure>
+                <img src="images/generation.jpg" alt="One-step generation showcase of ImageNet-256x256 with ESC(SiT-XL/2 architecture)" style="display: block; width: 100%; height: auto; margin: 0 auto;">
+                <figcaption style="text-align: center;">
+                    One-step generation showcase of ImageNet-256x256 with ESC(SiT-XL/2 architecture).
+                </figcaption>
+            </figure>
+        </d-figure>
+
+        <section id="abstract">
+            <h2>Abstract</h2>
+            <p>
+                Recent one-step diffusion models trained from scratch have shown strong empirical
+                efficiency by shortcutting probability flow paths, but their method design is often
+                tightly coupled with implementation details. This makes it difficult to understand
+                what is essential and what is replaceable.
+            </p>
+            <p>
+                We present a unified design space for shortcut models through flow-map learning:
+                a one-step prediction is regularized by a two-step target under sampled times. This view unifies representative discrete-time and continuous-time
+                methods, and enables component-level analysis of path choice, time sampler, flow-map
+                solver, and loss metric. Building on this perspective, our ESC variant improves
+                training stability and generation quality, reaching FID50k <b>2.85</b> on
+                ImageNet-256x256 with 1-NFE, and <b>2.53</b> with extended training.
+            </p>
+        </section>
+
+        <section id="unification">
+            <h2>Unifying the Designing Choices</h2>
+            <p>
+                We follow the common training template from the paper section
+                <em>Learning to shortcut flow paths</em>: construct a two-step flow-map target
+                \(\hat{X}_{s,r} \circ \hat{X}_{t,s}(x_t)\), then learn a one-step predictor
+                \(X^\theta_{t,r}(x_t)\) to match it. Under this template, existing methods can be
+                compared by modular choices rather than isolated derivations.
+            </p>
+            <d-figure>
+                <table class="display-table" style="margin-top: 20px; width: 100%; table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 20.00%;">
+                        <col style="width: 16.66%;">
+                        <col style="width: 16.66%;">
+                        <col style="width: 16.66%;">
+                        <col style="width: 16.66%;">
+                        <col style="width: 16.66%;">
+                    </colgroup>
+                    <tr>
+                        <th style="text-align: left;">Design Choice</th>
+                        <th style="text-align: center;">CT</th>
+                        <th style="text-align: center;">SCD</th>
+                        <th style="text-align: center;">IMM</th>
+                        <th style="text-align: center;">sCT</th>
+                        <th style="text-align: center;">MeanFlow</th>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">Model Type</td>
+                        <td>Discrete</td>
+                        <td>Discrete</td>
+                        <td>Discrete</td>
+                        <td>Continuous</td>
+                        <td>Continuous</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">Flow Path</td>
+                        <td>Cosine</td>
+                        <td>Linear</td>
+                        <td>Linear</td>
+                        <td>Cosine</td>
+                        <td>Linear</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">Network Output</td>
+                        <td>\(v^\theta\)</td>
+                        <td>\(u^\theta\)</td>
+                        <td>\(v^\theta\)</td>
+                        <td>\(v^\theta\)</td>
+                        <td>\(u^\theta\)</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">1st-step Target</td>
+                        <td>DDIM with \(v_{t|0}\)</td>
+                        <td>Euler with \(u^\theta\)</td>
+                        <td>DDIM with \(v_{t|0}\)</td>
+                        <td>DDIM with \(v_{t|0}\)</td>
+                        <td>DDIM with \(v_{t|0}\)</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">2nd-step Target</td>
+                        <td>DDIM with \(v^\theta_s\)</td>
+                        <td>Euler with \(u^\theta\)</td>
+                        <td>DDIM with \(v^\theta_s\)</td>
+                        <td>DDIM with \(v^\theta_s\)</td>
+                        <td>Euler with \(u^\theta\)</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">One-step Prediction</td>
+                        <td>DDIM with \(v^\theta_t\)</td>
+                        <td>Euler with \(u^\theta\)</td>
+                        <td>DDIM with \(v^\theta_t\)</td>
+                        <td>DDIM with \(v^\theta_t\)</td>
+                        <td>Euler with \(u^\theta\)</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">Loss Metric</td>
+                        <td>LPIPS</td>
+                        <td>\(l_2\)</td>
+                        <td>Grouped kernel (MMD)</td>
+                        <td>\(l_2\)</td>
+                        <td>\(l_2\)</td>
+                    </tr>
+                </table>
+                <figcaption style="text-align: center;">
+                    Unified design view of representative shortcut models, where \(u^\theta\) is the network parameterization of average velocity and \(v^\theta\) is the network parameterization of instantaneous velocity.
+                </figcaption>
+            </d-figure>
+        </section>
+
+        <section id="elucidating">
+            <h2>Elucidating the Designing Space</h2>
+            <h3>1. Theoretical intuition</h3>
+            <p>
+                <b>Q1: Why share a common design frame?</b> Shortcut models fundamentally simulate
+                PF-ODE trajectories under the marginal velocity field \(v_t(x)\). Ideally, we would
+                supervise with true trajectory pairs \((x_t, x_r)\), but \(x_r\) is intractable once
+                \(x_t\) is sampled. The practical and general solution is therefore to construct a
+                two-step target through an intermediate state \(\hat{x}_s\), and train a one-step map
+                to match it.
+            </p>
+            <p>
+                <b>Q2: What is the challenge in target construction?</b> In practice, \(\hat{x}_s\)
+                and \(\hat{x}_r\) deviate from the ideal trajectory states \((x_s, x_r)\), introducing
+                bias and variance in supervision. These deviations explain why different shortcut
+                designs can yield noticeably different performance, even if they follow the same
+                high-level principle.
+            </p>
+            <p>
+                <b>Q3: Why does distillation from pretrained fields work better?</b> Distillation uses
+                a stronger pretrained velocity field that better approximates the marginal velocity,
+                reducing target-construction error and providing cleaner supervision than pure
+                training-from-scratch settings.
+            </p>
+            <d-figure>
+                <figure>
+                    <img src="images/demonstration.jpg" alt="Theoretical intuition figure" style="display: block; width: 100%; height: auto; margin: 0 auto;">
+                    <figcaption style="text-align: center;">
+                        Physical picture of ideal vs. practical learning for DTSC and CTSC (from the paper figure).
+                    </figcaption>
+                </figure>
+            </d-figure>
+
+            <h3>2. Empirical Illustration</h3>
+            <p>
+                <b>Following linear or cosine paths?</b> Empirically, linear-path variants are more
+                competitive in shortcut settings. A key intuition is lower transport curvature and
+                smaller deviation in two-step targets, which makes one-step approximation easier.
+            </p>
+            <p>
+                <b>Discrete-time or continuous-time shortcutting?</b> Under unified implementation,
+                continuous-time variants (e.g., sCT / MeanFlow family) consistently outperform
+                discrete-time variants in one-step generation quality.
+            </p>
+            <p>
+                <b>Fixing terminal time or making it random?</b> Fixing \(r=0\) can improve early-stage
+                convergence, while randomizing terminal time \(r\) better captures global shortcut
+                patterns and often yields stronger late-stage performance.
+            </p>
+            <d-figure>
+                <figure>
+                    <img src="images/elucidate.jpg" alt="Empirical illustration across CIFAR and ImageNet" style="display: block; width: 100%; height: auto; margin: 0 auto;">
+                    <figcaption style="text-align: center;">
+                        FID50k comparison curves across CIFAR-10 and ImageNet settings.
+                    </figcaption>
+                </figure>
+            </d-figure>
+        </section>
+
+        <section id="improvements">
+            <h2>Improvements to Training</h2>
+            <p>
+                Building on the theoretical and empirical analysis above, we adopt a continuous-time
+                linear-path baseline (MeanFlow with SiT-B/2) and improve it through three directions.
+                First, we use <b>plug-in velocity</b> to reduce supervision variance from conditional
+                velocity estimates. Second, we introduce a <b>gradual time sampler</b>, which starts
+                with easier supervision and smoothly transitions to the full CTSC sampling regime.
+                Third, we integrate practical optimization tricks (adaptive weighting and warmup-style
+                stabilization) to improve training robustness.
+            </p>
+            <p>
+                In addition, under classifier-free guidance training, we apply a mixed plug-in
+                probability and class-consistent batching to preserve class information while still
+                benefiting from lower-variance supervision. Overall, these modifications form ESC and
+                consistently improve one-step generation fidelity.
+            </p>
+            <d-figure>
+                <table class="display-table" style="margin-top: 20px;">
+                    <tr>
+                        <th>SiT-B/2 Setting (1-NFE, ImageNet-256)</th>
+                        <th>FID50k</th>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">MeanFlow baseline (CFG)</td>
+                        <td>6.09</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ A1 Plug-in velocity (p=1.0)</td>
+                        <td>6.01</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ A2 Plug-in velocity (p=0.5)</td>
+                        <td>5.98</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ B1 Plug-in (p=1.0) + class-consistent batching</td>
+                        <td>6.08</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ B2 Plug-in (p=0.5) + class-consistent batching</td>
+                        <td>5.96</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ C Gradual time sampler</td>
+                        <td>5.99</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">+ D Additional stabilization techniques</td>
+                        <td>5.95</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;"><strong>ESC (Baseline + B2 + C + D)</strong></td>
+                        <td><strong>5.77</strong></td>
+                    </tr>
+                </table>
+                <figcaption style="text-align: center;">
+                    SiT-B/2 ablation under one-step generation (organized from the paper's ImageNet-256 study).
+                </figcaption>
+            </d-figure>
+        </section>
+
+        <section id="experiments">
+            <h2>Experiments</h2>
+            <p>
+                <b>Scaling-up setting.</b> We evaluate ESC on ImageNet-256x256 in latent space with
+                SiT-XL/2 (about 676M parameters). Following the MeanFlow training protocol under
+                classifier-free guidance, ESC is trained from scratch for 240 epochs (about 1.2M
+                iterations), and ESC+ extends training to 480 epochs (about 2.4M iterations).
+                This section focuses on one-step generation quality (1-NFE), while also reporting
+                selected two-step references for context.
+            </p>
+            <p>
+                <b>Main scaling-up results.</b> Under 1-NFE on ImageNet-256x256, MeanFlow reports
+                FID50k 3.43, while ESC improves to <b>2.85</b>; with longer training, ESC+ reaches
+                <b>2.53</b>. This is a substantial gain over previous shortcut models trained from
+                scratch, and even surpasses MeanFlow's two-step number (2-NFE, FID50k 2.93).
+                The result indicates that better target construction and lower-variance supervision
+                remain effective at large model scales.
+            </p>
+            <d-figure>
+                <table class="display-table" style="margin-top: 20px;">
+                    <tr>
+                        <th>Method</th>
+                        <th>Params</th>
+                        <th>NFE</th>
+                        <th>FID50k</th>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">iCT</td>
+                        <td>675M</td>
+                        <td>1</td>
+                        <td>34.24</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">SCD</td>
+                        <td>675M</td>
+                        <td>1</td>
+                        <td>10.60</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">IMM</td>
+                        <td>675M</td>
+                        <td>1x2</td>
+                        <td>7.77</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">MeanFlow</td>
+                        <td>676M</td>
+                        <td>1</td>
+                        <td>3.43</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;">MeanFlow</td>
+                        <td>676M</td>
+                        <td>2</td>
+                        <td>2.93</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;"><strong>ESC</strong> (class-consistent)</td>
+                        <td>676M</td>
+                        <td>1</td>
+                        <td><strong>2.85</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: left;"><strong>ESC+</strong> (longer training)</td>
+                        <td>676M</td>
+                        <td>1</td>
+                        <td><strong>2.53</strong></td>
+                    </tr>
+                </table>
+                <figcaption style="text-align: center;">
+                    Scaling-up comparison on ImageNet-256x256 (shortcut-model-focused subset).
+                </figcaption>
+            </d-figure><br>
+            <p>
+                <b>Additional observations.</b> In our ablation and scaling runs, class-consistent
+                batching improves convergence speed, and plug-in velocity adds little computational
+                overhead while improving stability. Performance gains are also more pronounced on
+                larger backbones, suggesting that variance reduction becomes increasingly important
+                as model capacity grows.
+            </p>
+        </section>
+
+        </d-article>
+        <d-appendix>
+            <h3>BibTeX</h3>
+            <p class="bibtex">
+                @inproceedings{<br>
+                &nbsp;&nbsp;lin2026shortcut,<br>
+                &nbsp;&nbsp;title={On the Design of One-step Diffusion via Shortcutting Flow Paths},<br>
+                &nbsp;&nbsp;author={Haitao Lin and Peiyan Hu and Minsi Ren and Zhifeng Gao <br> &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;and Zhi-Ming
+                     Ma and Guolin Ke and Tailin Wu and Stan Z. Li},<br>
+                &nbsp;&nbsp;year={2026},<br>
+                &nbsp;&nbsp;booktitle={The Fourteenth International Conference on Learning Representations},<br>
+                &nbsp;&nbsp;url={https://openreview.net/forum?id=k6q8rRYVQR}<br>
+                }
+            </p>
+            <d-footnote-list></d-footnote-list>
+            <d-citation-list></d-citation-list>
+        </d-appendix>
+
+        <d-bibliography src="bibliography.bib"></d-bibliography>
+        <script src="contents_bar.js"></script>
+    </body>
+</html>
+

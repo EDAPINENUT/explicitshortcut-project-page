@@ -1,0 +1,41 @@
+
+\setlength{\intextsep}{0pt} % no space above or below the figure
+\setlength{\columnsep}{10pt} % adjust space between text and figure
+
+% Attempt to make hyperref and algorithmic work together better:
+
+\usepackage[capitalize]{cleveref}
+\usepackage{subcaption}
+
+
+% Abbr
+\def\ie{\textit{i.e.,~}}
+\def\eg{\textit{e.g.,~}}
+\def\etc{\textit{etc}}
+\def\etal{\textit{et al.~}}
+\def\wrt{\textit{w.r.t.~}}
+\def\vs{\textit{v.s.~}}
+\def\resp{\textit{resp.~}}
+\def\sota{state-of-the-art~}
+
+% Math
+\input{math_commands.tex}
+
+\def\d{{\mathrm{d}}}
+\def\dist{{\mathbf{d}}}
+
+\newcommand{\EE}[1]{\E\bigr[ #1 \bigl]}  
+\newcommand{\ddt}{\frac{d}{d t}}
+
+% Datasets & metricsz
+\def\cifar{CIFAR-10}
+\def\imgnet{ImageNet 256$\times$256}
+
+% table format 
+\newcommand{\tablestyle}[2]{\setlength{\tabcolsep}{#1}\renewcommand{\arraystretch}{#2}\centering\footnotesize}
+
+
+\definecolor{baselinecolor}{gray}{.9}
+\newcommand{\baseline}[1]{\cellcolor{baselinecolor}{#1}}
+
+\renewcommand{\paragraph}[1]{\vspace{1.25mm}\noindent\textbf{#1}}
