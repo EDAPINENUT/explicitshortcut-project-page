@@ -17,6 +17,7 @@
   display: block;
   font-size: 1.15em;
   font-weight: 700;
+  color: #2f4358;
   margin-bottom: 0.2em;
 }
 
@@ -24,6 +25,7 @@
   display: block;
   font-size: 0.82em;
   font-weight: 500;
+  color: #2f4358;
 }
 
 .header-image img {
