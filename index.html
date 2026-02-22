@@ -317,11 +317,9 @@
                 SiT-XL/2 (about 676M parameters). Following the MeanFlow training protocol under
                 classifier-free guidance, ESC is trained from scratch for 240 epochs (about 1.2M
                 iterations), and ESC+ extends training to 480 epochs (about 2.4M iterations).
-                This section focuses on one-step generation quality (1-NFE), while also reporting
-                selected two-step references for context.
             </p>
             <p>
-                <b>Main scaling-up results.</b> Under 1-NFE on ImageNet-256x256, MeanFlow reports
+                <b>Main results.</b> Under 1-NFE on ImageNet-256x256, MeanFlow reports
                 FID50k 3.43, while ESC improves to <b>2.85</b>; with longer training, ESC+ reaches
                 <b>2.53</b>. This is a substantial gain over previous shortcut models trained from
                 scratch, and even surpasses MeanFlow's two-step number (2-NFE, FID50k 2.93).
